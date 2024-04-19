@@ -36,19 +36,19 @@ struct node//搜索树节点结构体
 	short SIMidx;//配合取缔expand。此外可在随机模拟、ucb时兼任“（加上无用位置的）结点孩子数”或者说遍历的结束位置。
 	short useless_end;//字面意思，从首到其的[)区间内为无用孩子（剪枝）。兼任有用孩子首index
 	node* parent;//用于反向传播 
-	node() :visits(0), win_times(0), useless_end(0),SIMidx(-1) {}//构造后总需要设置xy和parent。而孩子数组指针在模拟时分配数组空间,SIMidx==-1是未distribute的标识，traverse里胜利的情况可用其判断
+	node() :visits(0), win_times(0), useless_end(0), SIMidx(-1) {}//构造后总需要设置xy和parent。而孩子数组指针在模拟时分配数组空间,SIMidx==-1是未distribute的标识，traverse里胜利的情况可用其判断
 };
 void UCT(int& finalx, int& finaly);
 node* traverse(node* root);
 node* ucbchoice(node* n, double c);
-void DFS( int x, int y);
+void DFS(int x, int y);
 bool bluewin();
 bool redwin();
 int simulate(node* n);
 void distribute(node* n);
 void backup(int leaf_win_times, node* leaf);
-
-bool uselessJudge( int x, int y); int useless_blance = 1;//2?
+bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y);
+bool uselessJudge(int x, int y); int useless_blance = 1;//2?
 
 int* input;
 int n;
@@ -100,7 +100,11 @@ int main()
 			//ori_emptynums = SIZE * SIZE - 2 * n - 1;
 			mycolor = 'B';
 		}
-		UCT(new_x, new_y);
+		if (recoverBridge(MCTSboard, input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
+		}
+		else {
+			UCT(new_x, new_y);
+		}
 	}
 
 	delete[] input;
@@ -121,7 +125,7 @@ struct coordinate
 {
 	int x; int y;
 	coordinate() :x(-1), y(-1) {}
-	coordinate(int i,int j) :x(i), y(j) {}
+	coordinate(int i, int j) :x(i), y(j) {}
 };
 vector<coordinate> only_for_root;
 void UCT(int& finalx, int& finaly) {
@@ -180,7 +184,7 @@ void UCT(int& finalx, int& finaly) {
 	node* result = tmp;
 	int maxvisits = 0;
 	for (; tmp != end; tmp++) {
-		if (tmp->visits > maxvisits|| tmp->visits== maxvisits&& tmp->win_times> result->win_times) {
+		if (tmp->visits > maxvisits || tmp->visits == maxvisits && tmp->win_times > result->win_times) {
 			maxvisits = tmp->visits;
 			result = tmp;
 		}
@@ -204,7 +208,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 		MCTSoccupy += now->useless_end;
 		if (now->SIMidx < kidnum_of_now) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
 			(now->SIMidx)++;
-			now = &(now->kids_array[now->SIMidx-1]);
+			now = &(now->kids_array[now->SIMidx - 1]);
 			myturn = !myturn;
 			//kidnum_of_now--;此处无用
 			if (myturn)
@@ -230,7 +234,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			else;//肯定没人赢不用检查了
 			current_time = clock();
 		}
-		else { cout << "\nnow->SIMidx > kidnum_of_now"; break; }			
+		else { cout << "\nnow->SIMidx > kidnum_of_now"; break; }
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
 }
@@ -266,7 +270,7 @@ bool redwin() {
 	dfs_terminal = false;
 	for (int i = 0; i <= boardedge; i++) {
 		if (MCTSboard[0][i] == sign)
-			DFS( 0, i);
+			DFS(0, i);
 		if (dfs_terminal)
 			break;
 	}
@@ -318,7 +322,7 @@ int simulate(node* leaf) {
 #endif // DEBUG
 
 	int remainSIM = rollout_times;
-	coordinate *randomarr=new coordinate[emptynums];
+	coordinate* randomarr = new coordinate[emptynums];
 	int idx = 0;
 	for (short i = 0; i <= boardedge; i++)
 		for (short j = 0; j <= boardedge; j++) {
@@ -333,12 +337,12 @@ int simulate(node* leaf) {
 	if (myturn) pawn = -1;
 	else pawn = 1;
 	while (remainSIM-- && current_time - start_time < threshold) {//如果模拟次数少且其余操作省时，可以把时间判断移除循环。此外如果模拟次数多的话，中断的影响需要处理的。
-		srand(unsigned(7*time(NULL)));
+		srand(unsigned(7 * time(NULL)));
 		random_shuffle(randomarr, randomarr + emptynums);
 		int remain_nums = emptynums;
 		while (remain_nums--) {//判断之后对齐下标
 			int x = randomarr[remain_nums].x, y = randomarr[remain_nums].y;
-			if (uselessJudge( x, y))
+			if (uselessJudge(x, y))
 			{
 				MCTSboard[x][y] = useless_blance;
 				useless_blance = -useless_blance;
@@ -360,7 +364,7 @@ int simulate(node* leaf) {
 	}
 	delete[] randomarr;
 	//模拟结束
-	if (remainSIM>-1) return rollout_times / 2;//返回个无效数据即可
+	if (remainSIM > -1) return rollout_times / 2;//返回个无效数据即可
 	if (myturn && mycolor == 'B' || !myturn && mycolor == 'R') return bluewin_cnt;//无论该节点为己方敌方，返回其获胜局数 
 	else return rollout_times - bluewin_cnt;
 }
@@ -370,12 +374,12 @@ int cnt = 0;
 
 void distribute(node* n) {//相当于一次性拓展.
 	n->kids_array = new node[121 - MCTSoccupy];
-	node* tmp = (n->kids_array) + (121 - MCTSoccupy -1);//节省运算时间 
+	node* tmp = (n->kids_array) + (121 - MCTSoccupy - 1);//节省运算时间 
 	//int idx = 121 - MCTSoccupy - 1;
 	for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
 		for (int j = 0; j <= boardedge; j++) {
 			if (MCTSboard[i][j] == 0) {
-				if (uselessJudge( i, j)) {
+				if (uselessJudge(i, j)) {
 					n->kids_array[n->useless_end].x = i;
 					n->kids_array[n->useless_end].y = j;
 					n->kids_array[n->useless_end].parent = n;
@@ -408,5 +412,142 @@ void backup(int leaf_win_times, node* leaf) {//模拟点的数据一同更改
 		win_times = rollout_times - win_times;//每一层翻转获胜 与失败次数 
 	}
 }
-bool uselessJudge( int x, int y) { return false; }
+bool uselessJudge(int x, int y) { return false; }
+bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) {
+	if (x - 1 >= 0 && y + 1 < SIZE && MCTSboard[x - 1][y] == MCTSboard[x][y + 1])
+	{
+		if (MCTSboard[x - 1][y + 1] == 0 && MCTSboard[x - 1][y] == 1)
+		{
+			new_x = x - 1;
+			new_y = y + 1;
+			return true;
+		}
+	}
+	if (x - 1 >= 0 && y + 1 < SIZE && y - 1 >= 0 && MCTSboard[x - 1][y + 1] == MCTSboard[x][y - 1])
+	{
+		if (MCTSboard[x - 1][y] == 0 && MCTSboard[x - 1][y + 1] == 1)
+		{
+			new_x = x - 1;
+			new_y = y;
+			return true;
+		}
+	}
+	if (x + 1 < SIZE && x - 1 >= 0 && y - 1 >= 0 && MCTSboard[x - 1][y] == MCTSboard[x + 1][y - 1])
+	{
+		if (MCTSboard[x][y - 1] == 0 && MCTSboard[x - 1][y] == 1)
+		{
+			new_x = x;
+			new_y = y - 1;
+			return true;
+		}
+	}
+	if (x + 1 < SIZE && y - 1 >= 0 && MCTSboard[x][y - 1] == MCTSboard[x + 1][y])
+	{
+		if (MCTSboard[x + 1][y - 1] == 0 && MCTSboard[x][y - 1] == 1)
+		{
+			new_x = x + 1;
+			new_y = y - 1;
+			return true;
+		}
+	}
+	if (x + 1 < SIZE && y + 1 < SIZE && y - 1 >= 0 && MCTSboard[x + 1][y - 1] == MCTSboard[x][y + 1])
+	{
+		if (MCTSboard[x + 1][y] == 0 && MCTSboard[x + 1][y - 1] == 1)
+		{
+			new_x = x + 1;
+			new_y = y;
+			return true;
+		}
+	}
+	if (x + 1 < SIZE && x - 1 >= 0 && y + 1 >= 0 && MCTSboard[x + 1][y] == MCTSboard[x - 1][y + 1])
+	{
+		if (MCTSboard[x][y + 1] == 0 && MCTSboard[x + 1][y] == 1)
+		{
 
+			new_x = x;
+			new_y = y + 1;
+			return true;
+
+		}
+	}
+	if (y == 0)
+	{
+		if (x - 1 >= 0 && MCTSboard[x - 1][y + 1] == 1 && MCTSboard[x - 1][y] == 0)
+		{
+
+			new_x = x - 1;
+			new_y = y;
+			return true;
+
+		}
+		if (x + 1 < SIZE && MCTSboard[x][y + 1] == 1 && MCTSboard[x + 1][y] == 0)
+		{
+
+			new_x = x + 1;
+			new_y = y;
+			return true;
+
+		}
+
+	}
+	if (x == 0)
+	{
+		if (y - 1 >= 0 && MCTSboard[x + 1][y - 1] == 1 && MCTSboard[x][y - 1] == 0)
+		{
+
+			new_x = x;
+			new_y = y - 1;
+			return true;
+
+		}
+		if (y + 1 < SIZE && MCTSboard[x + 1][y] == 1 && MCTSboard[x][y + 1] == 0)
+		{
+
+			new_x = x;
+			new_y = y + 1;
+			return true;
+
+		}
+
+	}
+	if (y == 10)
+	{
+		if (x + 1 < SIZE && MCTSboard[x + 1][y - 1] == 1 && MCTSboard[x + 1][y] == 0)
+		{
+
+			new_x = x + 1;
+			new_y = y;
+			return true;
+
+		}
+		if (x - 1 >= 0 && MCTSboard[x][y - 1] == 1 && MCTSboard[x - 1][y] == 0)
+		{
+
+			new_x = x - 1;
+			new_y = y;
+			return true;
+
+		}
+
+	}
+	if (x == 10)
+	{
+		if (y + 1 < SIZE && MCTSboard[x - 1][y + 1] == 1 && MCTSboard[x][y + 1] == 0)
+		{
+
+			new_x = x;
+			new_y = y + 1;
+			return true;
+
+		}
+		if (y - 1 >= 0 && MCTSboard[x - 1][y] == 1 && MCTSboard[x][y - 1] == 0)
+		{
+
+			new_x = x;
+			new_y = y - 1;
+			return true;
+
+		}
+	}
+	return false;
+}
