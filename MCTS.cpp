@@ -215,7 +215,6 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			MCTSboard[now->kids_array[k].x][now->kids_array[k].y] = useless_blance;
 			useless_blance = -useless_blance;
 		}
-		kidnum_of_now -= now->useless_end;
 		MCTSoccupy += now->useless_end;
 		if (now->SIMidx < kidnum_of_now) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
 			(now->SIMidx)++;
