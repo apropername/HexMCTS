@@ -48,7 +48,7 @@ int simulate(node* n);
 void distribute(node* n);
 void backup(int leaf_win_times, node* leaf);
 bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y);
-bool uselessJudge(int x, int y); int useless_blance = 1;//2?
+bool uselfulJudge(int x, int y); int useless_blance = 1;//2?
 char getcolor(int x, int y);
 
 int* input;
@@ -353,7 +353,7 @@ int simulate(node* leaf) {
 		int remain_nums = emptynums;
 		while (remain_nums--) {//判断之后对齐下标
 			int x = randomarr[remain_nums].x, y = randomarr[remain_nums].y;
-			if (!uselessJudge(x, y))
+			if (!uselfulJudge(x, y))
 			{
 				MCTSboard[x][y] = useless_blance;
 				useless_blance = -useless_blance;
@@ -390,7 +390,7 @@ void distribute(node* n) {//相当于一次性拓展.
 	for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
 		for (int j = 0; j <= boardedge; j++) {
 			if (MCTSboard[i][j] == 0) {
-				if (!uselessJudge(i, j)) {
+				if (!uselfulJudge(i, j)) {
 					n->kids_array[n->useless_end].x = i;
 					n->kids_array[n->useless_end].y = j;
 					n->kids_array[n->useless_end].parent = n;
@@ -423,12 +423,11 @@ void backup(int leaf_win_times, node* leaf) {//模拟点的数据一同更改
 		win_times = rollout_times - win_times;//每一层翻转获胜 与失败次数 
 	}
 }
-bool uselessJudge(int x, int y) {
+bool uselfulJudge(int x, int y) {
 	int my_color_num = 0;
 	int enemy_color_num = 0;
 	int empty = 0;
 	int invalid = 0;
-
 	for (int i = 0; i < 6; i++) {
 		x = x + dx[i]; y = y + dy[i];
 		if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
@@ -453,37 +452,44 @@ bool uselessJudge(int x, int y) {
 	}
 	if (invalid == 4) {
 		if (x == 0) {
-			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R')return false;
+			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R') return false;
+			if (my_color_num == 2 || enemy_color_num == 2)return false;
 			return true;
 		}
 		else {
 			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y - 1) == 'R')return false;
-			return false;
+			if (my_color_num == 2 || enemy_color_num == 2)return false;
+			return true;
 		}
 	}
 	else if (invalid == 3) {
+		if (enemy_color_num == 3 || my_color_num == 3)return false;
+		if (empty == 2 || empty == 3)return false;
 		if (x == 0) {
 			if (enemy_color_num == 1 && my_color_num == 1 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
-			if (enemy_color_num == 3 || my_color_num == 3)return false;
+			if (enemy_color_num == 1 && my_color_num == 2 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
+			if (enemy_color_num == 2 && my_color_num == 1 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
 			return true;
-
 		}
 		else {
 			if (enemy_color_num == 1 && my_color_num == 1 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
-			if (enemy_color_num == 3 || my_color_num == 3)return false;
+			if (enemy_color_num == 1 && my_color_num == 2 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
+			if (enemy_color_num == 2 && my_color_num == 1 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
 			return true;
 		}
 	}
 	else if (invalid == 2) {
 		int flag_my = 0;
 		int flag_enemy = 0;
-		if (empty == 4 || 3 || 2) {
-			return true;
-		}else if(empty == 1){
+		if (empty == 4 || empty == 3 || empty == 2) {
+			return false;
+		}
+		else if (empty == 1) {
+			if (my_color_num == 3 || enemy_color_num == 3) return false;
 			if (my_color_num == 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
-					if (x >= 0 && x <= 10&& y>= 0&& y <= 10) {
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
 						if (MCTSboard[x][y] == 1) {
 							int p = i - 1;
 							int p2 = i + 1;
@@ -493,10 +499,10 @@ bool uselessJudge(int x, int y) {
 							if (p2 == 6) {
 								p2 = 0;
 							}
-							if (x - dx[i] + dx[p] >= 0&& x - dx[i] + dx[p] <= 10&&MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
-							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 &&MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
 						}
-						
+
 					}
 					x = x - dx[i]; y = y - dy[i];
 				}
@@ -524,7 +530,7 @@ bool uselessJudge(int x, int y) {
 				return true;
 			}
 		}
-		else if(empty == 0){
+		else if (empty == 0) {
 			if (my_color_num == 4 || enemy_color_num == 4)return false;
 			if (my_color_num == 3) {
 				int flag_jud = 0;
@@ -606,14 +612,16 @@ bool uselessJudge(int x, int y) {
 				return true;
 			}
 		}
-		
+
 	}
 	else if (invalid == 0) {
-		int x2 = x;
-		int y2 = y;
-		if (empty >= 3)return true;
+		if (empty >= 3) {
+			return true;
+		}
 		if (empty <= 2) {
-			if (my_color_num > 4 || enemy_color_num > 4)return false;
+			if (my_color_num > 4 || enemy_color_num > 4) {
+				return false;
+			}
 			if (my_color_num == 4 && enemy_color_num <= 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
@@ -748,7 +756,17 @@ bool uselessJudge(int x, int y) {
 						if (p < 0) {
 							p = 6 + p;
 						}
-						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0)return false;
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0) {
+							p = i - 1;
+							if (p < 0) {
+								p = 6 + p;
+							}
+							int p2 = p - 1;
+							if (p2 < 0) {
+								p2 = 6 + p2;
+							}
+							if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]])return false;
+						}
 					}
 					x = x - dx[i]; y = y - dy[i];
 				}
@@ -802,8 +820,8 @@ bool uselessJudge(int x, int y) {
 				}
 				return true;
 			}
-		}
 
+		}
 	}
 	return true;
 }
