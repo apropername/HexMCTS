@@ -51,7 +51,11 @@ bool recoverBridge( int x, int y, int& new_x, int& new_y);
 void choosekids(int expandpointx[], int expandpointy[]);
 bool uselessJudge(int x, int y); int useless_blance = 1;//2?
 char getcolor(int x, int y);
-
+bool edgeAttack(int x, int y, int& new_x, int& new_y);
+bool blueUp(int x, int y, bool isFirstCall);
+bool redUp(int x, int y, bool isFirstCall);
+bool blueDown(int x, int y, bool isFirstCall);
+bool redDown(int x, int y, bool isFirstCall);
 int* input;
 int n;
 char mycolor;
@@ -89,6 +93,7 @@ int main()
 
 	int new_x, new_y;
 	DBGprint("\n输入的最后一个坐标 %d %d", input[4 * n - 4], input[4 * n - 3]);
+	cout << endl;
 	if (input[4 * n - 4] == -1) {//最后一个坐标是-1 -1 	游戏刚开始qie我方为先手即红方
 		new_x = 1; new_y = 2;
 	}
@@ -97,8 +102,8 @@ int main()
 		if (MCTSboard[7][3] == 0) {
 			new_x = 7; new_y = 3;
 		}
-		else if (MCTSboard[3][7] == 0) {
-			new_x = 3; new_y = 7;
+		else if (MCTSboard[6][5] == 0) {
+			new_x = 6; new_y = 5;
 		}
 		else {
 			//记录其他信息 
@@ -113,7 +118,10 @@ int main()
 			if (recoverBridge( input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
 
 			}
-			else {
+			else if (edgeAttack(input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
+
+			}
+			else{
 				UCT(new_x, new_y);
 			}
 		}
@@ -125,16 +133,20 @@ int main()
 	return 0;
 }
 
-int threshold = 0.980 * (double)CLOCKS_PER_SEC;
+int threshold = 0.98 * (double)CLOCKS_PER_SEC;
 int start_time = clock();//程序一开始的时刻 
 int current_time;
 #ifdef DEBUG
 bool onceprint = false;
 #endif // DEBUG
 
+<<<<<<< HEAD
 int rollout_times = 20;//可以设置随层渐增，即增加多回合模拟的权重， 而且 在节点数较多时平衡总时间 。
 int expand_count = 0;
 int xofkid[121] = { 0 }, yofkid[121] = { 0 };
+=======
+int rollout_times = 1;//可以设置随层渐增，即增加多回合模拟的权重， 而且 在节点数较多时平衡总时间 。
+>>>>>>> jiafinal
 struct coordinate
 {
 	int x; int y;
@@ -200,6 +212,7 @@ void UCT(int& finalx, int& finaly) {
 	node* result = tmp;
 	int maxvisits = 0;
 	for (; tmp != end; tmp++) {
+		cout << tmp->x <<" " << tmp->y <<" " << tmp->visits<<endl;
 		if (tmp->visits > maxvisits || tmp->visits == maxvisits && tmp->win_times > result->win_times) {
 			maxvisits = tmp->visits;
 			result = tmp;
@@ -235,8 +248,26 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			maintain_kidsarr(now->kids_array[k].x, now->kids_array[k].y);
 		}
 		MCTSoccupy += now->useless_end;
+<<<<<<< HEAD
 		kids_num-=now->useless_end;
 		if (now->SIMidx == kidnum_of_now+now->useless_end ){//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
+=======
+		kidnum_of_now -= now->useless_end;
+		if (now->SIMidx < kidnum_of_now+ now->useless_end) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
+			(now->SIMidx)++;
+			now = &(now->kids_array[now->SIMidx - 1]);
+			myturn = !myturn;
+			//kidnum_of_now--;此处无用
+			if (myturn)
+				MCTSboard[now->x][now->y] = 1;
+			else
+				MCTSboard[now->x][now->y] = -1;
+			MCTSoccupy++;
+			//返回一个未模拟节点。存在这种情况：如果返回后时限已到便无法模拟则索引值确实是错的，但是程序要结束了这个索引值接下来也没有用了（注意只有索引值错了返回的节点是没错的 ）		
+			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
+		}
+		else if (now->SIMidx == kidnum_of_now+now->useless_end) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
+>>>>>>> jiafinal
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
 			kidnum_of_now--;
@@ -266,8 +297,12 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			//返回一个未模拟节点。存在这种情况：如果返回后时限已到便无法模拟则索引值确实是错的，但是程序要结束了这个索引值接下来也没有用了（注意只有索引值错了返回的节点是没错的 ）		
 			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
 		}
+<<<<<<< HEAD
 		
 		else { cout << "\nnow->SIMidx > kidnum_of_now+now->useless_end)"; break; }
+=======
+		else { cout << "\nnow->SIMidx > kidnum_of_now+now->useless_end;"; break; }
+>>>>>>> jiafinal
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
 }
@@ -375,7 +410,7 @@ int simulate(node* leaf) {
 		int remain_nums = emptynums;
 		while (remain_nums--) {//判断之后对齐下标
 			int x = randomarr[remain_nums].x, y = randomarr[remain_nums].y;
-			if (!uselessJudge(x, y))
+			if (!uselessJudge(x,y))
 			{
 				MCTSboard[x][y] = useless_blance;
 				useless_blance = -useless_blance;
@@ -405,6 +440,7 @@ int simulate(node* leaf) {
 int cnt = 0;
 #endif // DEBUG
 void distribute(node* n) {//相当于一次性拓展.
+<<<<<<< HEAD
 	int kids_num = expand_count;
 	//n->kids_array = new node[121 - MCTSoccupy];
 	n->kids_array = new node[kids_num];
@@ -423,6 +459,27 @@ void distribute(node* n) {//相当于一次性拓展.
 				n->kids_array[n->useless_end].y = j;
 				n->kids_array[n->useless_end].parent = n;
 				n->useless_end++;
+=======
+	n->kids_array = new node[121 - MCTSoccupy];
+	node* tmp = (n->kids_array) + (121 - MCTSoccupy - 1);//节省运算时间 
+	//int idx = 121 - MCTSoccupy - 1;
+	for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
+		for (int j = 0; j <= boardedge; j++) {
+			if (MCTSboard[i][j] == 0) {
+				if (!uselessJudge(i,j)) {
+					n->kids_array[n->useless_end].x = i;
+					n->kids_array[n->useless_end].y = j;
+					n->kids_array[n->useless_end].parent = n;
+					n->useless_end++;
+					if (n->parent == NULL) only_for_root.push_back({ i,j });
+				}
+				else {
+					tmp->x = i;
+					tmp->y = j;
+					tmp->parent = n;
+					tmp--;
+				}
+>>>>>>> jiafinal
 			}
 			else {
 				tmp->x = i;
@@ -455,7 +512,6 @@ bool uselessJudge(int x, int y) {
 	int enemy_color_num = 0;
 	int empty = 0;
 	int invalid = 0;
-
 	for (int i = 0; i < 6; i++) {
 		x = x + dx[i]; y = y + dy[i];
 		if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
@@ -480,34 +536,47 @@ bool uselessJudge(int x, int y) {
 	}
 	if (invalid == 4) {
 		if (x == 0) {
-			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R')return false;
+			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R') return false; 
+			if (my_color_num == 2 || enemy_color_num == 2)return false;
 			return true;
 		}
 		else {
 			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y - 1) == 'R')return false;
-			return false;
+			if (my_color_num == 2 || enemy_color_num == 2)return false;
+			return true;
 		}
 	}
 	else if (invalid == 3) {
+		if (enemy_color_num == 3 || my_color_num == 3)return false;
+		if (empty == 2||empty == 3)return false;
 		if (x == 0) {
 			if (enemy_color_num == 1 && my_color_num == 1 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
-			if (enemy_color_num == 3 || my_color_num == 3)return false;
+			if (enemy_color_num == 1 && my_color_num == 2 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
+			if (enemy_color_num == 2 && my_color_num == 1 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
 			return true;
-
 		}
 		else {
 			if (enemy_color_num == 1 && my_color_num == 1 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
-			if (enemy_color_num == 3 || my_color_num == 3)return false;
+			if (enemy_color_num == 1 && my_color_num == 2 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
+			if (enemy_color_num == 2 && my_color_num == 1 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
 			return true;
 		}
 	}
 	else if (invalid == 2) {
 		int flag_my = 0;
 		int flag_enemy = 0;
+<<<<<<< HEAD
 		if (empty == 4 || 3 || 2) {
 			return true;
 		}
 		else if (empty == 1) {
+=======
+		if (empty == 4 || empty == 3 || empty == 2) {
+			return false;
+		}
+		else if (empty == 1) {
+			if (my_color_num == 3 || enemy_color_num == 3) return false;
+>>>>>>> jiafinal
 			if (my_color_num == 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
@@ -637,11 +706,13 @@ bool uselessJudge(int x, int y) {
 
 	}
 	else if (invalid == 0) {
-		int x2 = x;
-		int y2 = y;
-		if (empty >= 3)return true;
+		if (empty >= 3) {
+			return true;
+		}
 		if (empty <= 2) {
-			if (my_color_num > 4 || enemy_color_num > 4)return false;
+			if (my_color_num > 4 || enemy_color_num > 4) {
+				return false;
+			}
 			if (my_color_num == 4 && enemy_color_num <= 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
@@ -776,7 +847,17 @@ bool uselessJudge(int x, int y) {
 						if (p < 0) {
 							p = 6 + p;
 						}
-						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0)return false;
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0) {
+							p = i - 1;
+							if (p < 0) {
+								p = 6 + p;
+							}
+							int p2 = p - 1;
+							if (p2 < 0) {
+								p2 = 6 + p2;
+							}
+							if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]])return false;
+						}
 					}
 					x = x - dx[i]; y = y - dy[i];
 				}
@@ -830,8 +911,8 @@ bool uselessJudge(int x, int y) {
 				}
 				return true;
 			}
-		}
 
+		}
 	}
 	return true;
 }
@@ -981,6 +1062,7 @@ char getcolor(int x, int y) {
 	//else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
 	else return 'W';//意料之外的情况
 }
+<<<<<<< HEAD
 void choosekids(int expandpointx[], int expandpointy[]) {
 	int dist[11][11], qx[121], qy[121];  int max_expand = 2;
 	int ql = 0, qr = -1;
@@ -1023,4 +1105,83 @@ void choosekids(int expandpointx[], int expandpointy[]) {
 		}
 	}
 	return;
+=======
+bool edgeAttack(int x, int y, int& new_x, int& new_y) {
+	char enemy_color = getcolor(x, y);
+	//cout << enemy_color;
+//char enemy_color = 'B';
+	if (enemy_color == 'B' && y != 1 && y != 9) {
+		if (10 - y < y && blueUp(x, y, true)) {
+			new_x = x - 1;
+			new_y = y + 2;
+			return true;
+
+		}
+		else if (10 - y > y && blueDown(x, y, true)) {
+			new_x = x + 1;
+			new_y = y - 2;
+			return true;
+		}
+		else if (10 - y == y && blueDown(x, y, true)) {
+			new_x = x + 1;
+			new_y = y - 2;
+			return true;
+		}
+		else if (10 - y == y && blueUp(x, y, true)) {
+			new_x = x - 1;
+			new_y = y + 2;
+			return true;
+		}
+
+	}
+	else if (enemy_color == 'R' && x != 1 && x != 9) {
+		if (10 - x < x && redUp(x, y, true)) {
+			new_x = x + 2;
+			new_y = y - 1;
+			return true;
+
+		}
+		else if (10 - x > x && redDown(x, y, true)) {
+			new_x = x - 2;
+			new_y = y + 1;
+			return true;
+		}
+		else if (10 - x == x && redDown(x, y, true)) {
+			new_x = x - 2;
+			new_y = y + 1;
+			return true;
+		}
+		else if (10 - x == x && redUp(x, y, true)) {
+			new_x = x + 2;
+			new_y = y - 1;
+			return true;
+		}
+	}
+	return false;
+}
+bool blueUp(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (y == 10 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return blueUp(x, y + 1, false) && blueUp(x - 1, y + 1, false);
+}
+bool blueDown(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (y == 0 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return blueDown(x, y - 1, false) && blueDown(x + 1, y - 1, false);
+}
+bool redUp(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (x == 10 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return redUp(x + 1, y, false) && redUp(x + 1, y - 1, false);
+}
+bool redDown(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (x == 0 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return redDown(x - 1, y, false) && redDown(x + 1, y - 1, false);
+
+>>>>>>> jiafinal
 }
