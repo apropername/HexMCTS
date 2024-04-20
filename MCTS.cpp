@@ -236,7 +236,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 		}
 		MCTSoccupy += now->useless_end;
 		kids_num-=now->useless_end;
-		if (now->SIMidx == kidnum_of_now ){//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
+		if (now->SIMidx == kidnum_of_now+now->useless_end ){//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
 			kidnum_of_now--;
