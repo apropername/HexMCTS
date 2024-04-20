@@ -50,7 +50,11 @@ void backup(int leaf_win_times, node* leaf);
 bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y);
 bool uselessJudge(int x, int y); int useless_blance = 1;//2?
 char getcolor(int x, int y);
-
+bool edgeAttack(int x, int y, int& new_x, int& new_y);
+bool blueUp(int x, int y, bool isFirstCall);
+bool redUp(int x, int y, bool isFirstCall );
+bool blueDown(int x, int y, bool isFirstCall);
+bool redDown(int x, int y, bool isFirstCall);
 int* input;
 int n;
 char mycolor;
@@ -91,13 +95,24 @@ int main()
 	if (input[4 * n - 4] == -1) {//最后一个坐标是-1 -1 	游戏刚开始qie我方为先手即红方
 		new_x = 1; new_y = 2;
 	}
-	
+
 	else {
-		if (MCTSboard[7][3] == 0) {
+		if (input[0] == -1) {//我方为先手即红方
+			//ori_emptynums = SIZE * SIZE - 2 * (n - 1);
+			mycolor = 'R';
+		}
+		else {
+			//ori_emptynums = SIZE * SIZE - 2 * n - 1;
+			mycolor = 'B';
+		}
+		if (edgeAttack(input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
+
+		}
+		else if (MCTSboard[7][3] == 0) {
 			new_x = 7; new_y = 3;
 		}
-		else if (MCTSboard[3][7] == 0) {
-			new_x = 3; new_y = 7;
+		else if (MCTSboard[6][5] == 0) {
+			new_x = 6; new_y = 5;
 		}
 		else {
 			//记录其他信息 
@@ -115,7 +130,7 @@ int main()
 			else {
 				UCT(new_x, new_y);
 			}
-	}
+		}
 	}
 
 	delete[] input;
@@ -124,7 +139,7 @@ int main()
 	return 0;
 }
 
-int threshold = 0.980 * (double)CLOCKS_PER_SEC;
+int threshold = 5 * (double)CLOCKS_PER_SEC;
 int start_time = clock();//程序一开始的时刻 
 int current_time;
 #ifdef DEBUG
@@ -215,7 +230,6 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			MCTSboard[now->kids_array[k].x][now->kids_array[k].y] = useless_blance;
 			useless_blance = -useless_blance;
 		}
-		kidnum_of_now -= now->useless_end;
 		MCTSoccupy += now->useless_end;
 		if (now->SIMidx < kidnum_of_now) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
 			(now->SIMidx)++;
@@ -453,7 +467,7 @@ bool uselessJudge(int x, int y) {
 	}
 	if (invalid == 4) {
 		if (x == 0) {
-			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R')return false;
+			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R') return false;
 			return true;
 		}
 		else {
@@ -479,11 +493,12 @@ bool uselessJudge(int x, int y) {
 		int flag_enemy = 0;
 		if (empty == 4 || 3 || 2) {
 			return true;
-		}else if(empty == 1){
+		}
+		else if (empty == 1) {
 			if (my_color_num == 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
-					if (x >= 0 && x <= 10&& y>= 0&& y <= 10) {
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
 						if (MCTSboard[x][y] == 1) {
 							int p = i - 1;
 							int p2 = i + 1;
@@ -493,10 +508,10 @@ bool uselessJudge(int x, int y) {
 							if (p2 == 6) {
 								p2 = 0;
 							}
-							if (x - dx[i] + dx[p] >= 0&& x - dx[i] + dx[p] <= 10&&MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
-							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 &&MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
 						}
-						
+
 					}
 					x = x - dx[i]; y = y - dy[i];
 				}
@@ -524,7 +539,7 @@ bool uselessJudge(int x, int y) {
 				return true;
 			}
 		}
-		else if(empty == 0){
+		else if (empty == 0) {
 			if (my_color_num == 4 || enemy_color_num == 4)return false;
 			if (my_color_num == 3) {
 				int flag_jud = 0;
@@ -606,7 +621,7 @@ bool uselessJudge(int x, int y) {
 				return true;
 			}
 		}
-		
+
 	}
 	else if (invalid == 0) {
 		int x2 = x;
@@ -952,4 +967,82 @@ char getcolor(int x, int y) {
 	else if (MCTSboard[x][y] == 0) return 'N';//纯空白格
 	else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
 	else return 'W';//意料之外的情况
+}
+bool edgeAttack(int x, int y, int& new_x, int& new_y) {
+	char enemy_color = getcolor(x, y);
+		//cout << enemy_color;
+	//char enemy_color = 'B';
+	if (enemy_color == 'B' && y != 1 && y != 9) {
+		if (10 - y < y && blueUp(x, y, true)) {
+			new_x = x - 1;
+			new_y = y + 2;
+			return true;
+
+		}
+		else if (10 - y > y && blueDown(x, y, true)) {
+			new_x = x + 1;
+			new_y = y - 2;
+			return true;
+		}
+		else if (10 - y == y && blueDown(x, y, true)) {
+			new_x = x + 1;
+			new_y = y - 2;
+			return true;
+		}
+		else if (10 - y == y && blueUp(x, y, true)) {
+			new_x = x - 1;
+			new_y = y + 2;
+			return true;
+		}
+
+	}
+	else if (enemy_color == 'R' && x != 1 && x != 9) {
+		if (10 - x < x && redUp(x, y, true)) {
+			new_x = x + 2;
+			new_y = y - 1;
+			return true;
+
+		}
+		else if (10 - x > x && redDown(x, y, true)) {
+			new_x = x - 2;
+			new_y = y + 1;
+			return true;
+		}
+		else if (10 - x == x && redDown(x, y, true)) {
+			new_x = x - 2;
+			new_y = y + 1;
+			return true;
+		}
+		else if (10 - x == x && redUp(x, y, true)) {
+			new_x = x + 2;
+			new_y = y - 1;
+			return true;
+		}
+	}
+	return false;
+}
+bool blueUp(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (y == 10 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return blueUp(x, y + 1, false) && blueUp(x - 1, y + 1, false);
+}
+bool blueDown(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (y == 0 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return blueDown(x, y - 1, false) && blueDown(x + 1, y - 1, false);
+}
+bool redUp(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (x == 10 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return redUp(x + 1, y, false) && redUp(x + 1, y - 1, false);
+}
+bool redDown(int x, int y, bool isFirstCall = true) {
+	if (x < 0 || x >= 11 || y < 0 || y >= 11) return false;
+	if (x == 0 && MCTSboard[x][y] == 0) return true;
+	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
+	return redDown(x - 1, y, false) && redDown(x + 1, y - 1, false);
+
 }
