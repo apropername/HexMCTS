@@ -93,7 +93,6 @@ int main()
 
 	int new_x, new_y;
 	DBGprint("\n输入的最后一个坐标 %d %d", input[4 * n - 4], input[4 * n - 3]);
-	cout << endl;
 	if (input[4 * n - 4] == -1) {//最后一个坐标是-1 -1 	游戏刚开始qie我方为先手即红方
 		new_x = 1; new_y = 2;
 	}
@@ -208,7 +207,6 @@ void UCT(int& finalx, int& finaly) {
 	node* result = tmp;
 	int maxvisits = 0;
 	for (; tmp != end; tmp++) {
-		cout << tmp->x <<" " << tmp->y <<" " << tmp->visits<<endl;
 		if (tmp->visits > maxvisits || tmp->visits == maxvisits && tmp->win_times > result->win_times) {
 			maxvisits = tmp->visits;
 			result = tmp;
