@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS
+﻿#define _CRT_SECURE_NO_WARNINGS
 #include <iostream>
 #include <string>
 #include <string.h>
@@ -10,7 +10,7 @@
 #include<algorithm>
 
 #ifndef _BOTZONE_ONLINE
-#define DEBUG
+//#define DEBUG
 #endif
 
 #ifdef DEBUG
@@ -47,7 +47,7 @@ bool redwin();
 int simulate(node* n);
 void distribute(node* n);
 void backup(int leaf_win_times, node* leaf);
-bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y);
+bool recoverBridge( int x, int y, int& new_x, int& new_y);
 void choosekids(int expandpointx[], int expandpointy[]);
 bool uselessJudge(int x, int y); int useless_blance = 1;//2?
 char getcolor(int x, int y);
@@ -110,8 +110,8 @@ int main()
 				//ori_emptynums = SIZE * SIZE - 2 * n - 1;
 				mycolor = 'B';
 			}
+			if (recoverBridge( input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
 
-			if (recoverBridge(MCTSboard, input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
 			}
 			else {
 				UCT(new_x, new_y);
@@ -236,7 +236,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 		}
 		kidnum_of_now -= now->useless_end;
 		MCTSoccupy += now->useless_end;
-		if (now->SIMidx == kidnum_of_now) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
+		if (now->SIMidx == kidnum_of_now+ now->useless_end) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
 			kidnum_of_now--;
@@ -252,7 +252,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			else;//肯定没人赢不用检查了
 			current_time = clock();
 			}
-		else if (now->SIMidx < kidnum_of_now) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
+		else if (now->SIMidx < kidnum_of_now + now->useless_end) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
 			(now->SIMidx)++;
 			now = &(now->kids_array[now->SIMidx - 1]);
 			myturn = !myturn;
@@ -267,7 +267,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
 		}
 		
-		else { cout << "\nnow->SIMidx > kidnum_of_now"; break; }
+		else { cout << "\nnow->SIMidx > kidnum_of_now+ now->useless_end)"; break; }
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
 }
@@ -835,7 +835,7 @@ bool uselessJudge(int x, int y) {
 	}
 	return true;
 }
-bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) {
+bool recoverBridge(int x, int y, int& new_x, int& new_y) {
 	if (x - 1 >= 0 && y + 1 < SIZE && MCTSboard[x - 1][y] == MCTSboard[x][y + 1])
 	{
 		if (MCTSboard[x - 1][y + 1] == 0 && MCTSboard[x - 1][y] == 1)
@@ -978,7 +978,7 @@ char getcolor(int x, int y) {
 	if (MCTSboard[x][y] == 1 && mycolor == 'R' || MCTSboard[x][y] == -1 && mycolor == 'B')return 'R';
 	else if (MCTSboard[x][y] == 1 && mycolor == 'B' || MCTSboard[x][y] == -1 && mycolor == 'R')return 'B';
 	else if (MCTSboard[x][y] == 0) return 'N';//纯空白格
-	else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
+	//else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
 	else return 'W';//意料之外的情况
 }
 void choosekids(int expandpointx[], int expandpointy[]) {
