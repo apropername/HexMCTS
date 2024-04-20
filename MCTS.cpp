@@ -140,13 +140,9 @@ int current_time;
 bool onceprint = false;
 #endif // DEBUG
 
-<<<<<<< HEAD
 int rollout_times = 20;//可以设置随层渐增，即增加多回合模拟的权重， 而且 在节点数较多时平衡总时间 。
 int expand_count = 0;
 int xofkid[121] = { 0 }, yofkid[121] = { 0 };
-=======
-int rollout_times = 1;//可以设置随层渐增，即增加多回合模拟的权重， 而且 在节点数较多时平衡总时间 。
->>>>>>> jiafinal
 struct coordinate
 {
 	int x; int y;
@@ -248,26 +244,8 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			maintain_kidsarr(now->kids_array[k].x, now->kids_array[k].y);
 		}
 		MCTSoccupy += now->useless_end;
-<<<<<<< HEAD
-		kids_num-=now->useless_end;
+		kidsnum_of_now-=now->useless_end;
 		if (now->SIMidx == kidnum_of_now+now->useless_end ){//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
-=======
-		kidnum_of_now -= now->useless_end;
-		if (now->SIMidx < kidnum_of_now+ now->useless_end) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
-			(now->SIMidx)++;
-			now = &(now->kids_array[now->SIMidx - 1]);
-			myturn = !myturn;
-			//kidnum_of_now--;此处无用
-			if (myturn)
-				MCTSboard[now->x][now->y] = 1;
-			else
-				MCTSboard[now->x][now->y] = -1;
-			MCTSoccupy++;
-			//返回一个未模拟节点。存在这种情况：如果返回后时限已到便无法模拟则索引值确实是错的，但是程序要结束了这个索引值接下来也没有用了（注意只有索引值错了返回的节点是没错的 ）		
-			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
-		}
-		else if (now->SIMidx == kidnum_of_now+now->useless_end) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
->>>>>>> jiafinal
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
 			kidnum_of_now--;
@@ -297,12 +275,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			//返回一个未模拟节点。存在这种情况：如果返回后时限已到便无法模拟则索引值确实是错的，但是程序要结束了这个索引值接下来也没有用了（注意只有索引值错了返回的节点是没错的 ）		
 			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
 		}
-<<<<<<< HEAD
-		
 		else { cout << "\nnow->SIMidx > kidnum_of_now+now->useless_end)"; break; }
-=======
-		else { cout << "\nnow->SIMidx > kidnum_of_now+now->useless_end;"; break; }
->>>>>>> jiafinal
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
 }
@@ -440,7 +413,6 @@ int simulate(node* leaf) {
 int cnt = 0;
 #endif // DEBUG
 void distribute(node* n) {//相当于一次性拓展.
-<<<<<<< HEAD
 	int kids_num = expand_count;
 	//n->kids_array = new node[121 - MCTSoccupy];
 	n->kids_array = new node[kids_num];
@@ -459,27 +431,6 @@ void distribute(node* n) {//相当于一次性拓展.
 				n->kids_array[n->useless_end].y = j;
 				n->kids_array[n->useless_end].parent = n;
 				n->useless_end++;
-=======
-	n->kids_array = new node[121 - MCTSoccupy];
-	node* tmp = (n->kids_array) + (121 - MCTSoccupy - 1);//节省运算时间 
-	//int idx = 121 - MCTSoccupy - 1;
-	for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
-		for (int j = 0; j <= boardedge; j++) {
-			if (MCTSboard[i][j] == 0) {
-				if (!uselessJudge(i,j)) {
-					n->kids_array[n->useless_end].x = i;
-					n->kids_array[n->useless_end].y = j;
-					n->kids_array[n->useless_end].parent = n;
-					n->useless_end++;
-					if (n->parent == NULL) only_for_root.push_back({ i,j });
-				}
-				else {
-					tmp->x = i;
-					tmp->y = j;
-					tmp->parent = n;
-					tmp--;
-				}
->>>>>>> jiafinal
 			}
 			else {
 				tmp->x = i;
@@ -565,18 +516,11 @@ bool uselessJudge(int x, int y) {
 	else if (invalid == 2) {
 		int flag_my = 0;
 		int flag_enemy = 0;
-<<<<<<< HEAD
-		if (empty == 4 || 3 || 2) {
-			return true;
-		}
-		else if (empty == 1) {
-=======
 		if (empty == 4 || empty == 3 || empty == 2) {
 			return false;
 		}
 		else if (empty == 1) {
 			if (my_color_num == 3 || enemy_color_num == 3) return false;
->>>>>>> jiafinal
 			if (my_color_num == 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
@@ -1062,7 +1006,6 @@ char getcolor(int x, int y) {
 	//else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
 	else return 'W';//意料之外的情况
 }
-<<<<<<< HEAD
 void choosekids(int expandpointx[], int expandpointy[]) {
 	int dist[11][11], qx[121], qy[121];  int max_expand = 2;
 	int ql = 0, qr = -1;
@@ -1105,7 +1048,6 @@ void choosekids(int expandpointx[], int expandpointy[]) {
 		}
 	}
 	return;
-=======
 bool edgeAttack(int x, int y, int& new_x, int& new_y) {
 	char enemy_color = getcolor(x, y);
 	//cout << enemy_color;
@@ -1183,5 +1125,4 @@ bool redDown(int x, int y, bool isFirstCall = true) {
 	if (!isFirstCall && MCTSboard[x][y] != 0) return false;
 	return redDown(x - 1, y, false) && redDown(x + 1, y - 1, false);
 
->>>>>>> jiafinal
 }
