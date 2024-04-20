@@ -244,7 +244,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			maintain_kidsarr(now->kids_array[k].x, now->kids_array[k].y);
 		}
 		MCTSoccupy += now->useless_end;
-		kidsnum_of_now-=now->useless_end;
+		kidnum_of_now-=now->useless_end;
 		if (now->SIMidx == kidnum_of_now+now->useless_end ){//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
@@ -1048,6 +1048,7 @@ void choosekids(int expandpointx[], int expandpointy[]) {
 		}
 	}
 	return;
+}
 bool edgeAttack(int x, int y, int& new_x, int& new_y) {
 	char enemy_color = getcolor(x, y);
 	//cout << enemy_color;
