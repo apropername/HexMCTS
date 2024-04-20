@@ -49,6 +49,7 @@ void distribute(node* n);
 void backup(int leaf_win_times, node* leaf);
 bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y);
 bool uselessJudge(int x, int y); int useless_blance = 1;//2?
+char getcolor(int x, int y);
 
 int* input;
 int n;
@@ -90,21 +91,31 @@ int main()
 	if (input[4 * n - 4] == -1) {//最后一个坐标是-1 -1 	游戏刚开始qie我方为先手即红方
 		new_x = 1; new_y = 2;
 	}
+	
 	else {
-		//记录其他信息 
-		if (input[0] == -1) {//我方为先手即红方
-			//ori_emptynums = SIZE * SIZE - 2 * (n - 1);
-			mycolor = 'R';
+		if (MCTSboard[7][3] == 0) {
+			new_x = 7; new_y = 3;
+		}
+		else if (MCTSboard[3][7] == 0) {
+			new_x = 3; new_y = 7;
 		}
 		else {
-			//ori_emptynums = SIZE * SIZE - 2 * n - 1;
-			mycolor = 'B';
-		}
-		if (recoverBridge(MCTSboard, input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
-		}
-		else {
-			UCT(new_x, new_y);
-		}
+			//记录其他信息 
+			if (input[0] == -1) {//我方为先手即红方
+				//ori_emptynums = SIZE * SIZE - 2 * (n - 1);
+				mycolor = 'R';
+			}
+			else {
+				//ori_emptynums = SIZE * SIZE - 2 * n - 1;
+				mycolor = 'B';
+			}
+
+			if (recoverBridge(MCTSboard, input[4 * n - 4], input[4 * n - 3], new_x, new_y)) {
+			}
+			else {
+				UCT(new_x, new_y);
+			}
+	}
 	}
 
 	delete[] input;
@@ -238,8 +249,8 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
 }
-int dx[6] = { 0,-1,-1,0,1,1 };
-int dy[6] = { 1,1,0,-1,-1,0 };
+int dx[6] = { 0,1,1,0,-1,-1 };
+int dy[6] = { 1,0,-1,-1,0,1 };
 bool dfs_terminal;
 int sign;
 char dfs_color;
@@ -342,7 +353,7 @@ int simulate(node* leaf) {
 		int remain_nums = emptynums;
 		while (remain_nums--) {//判断之后对齐下标
 			int x = randomarr[remain_nums].x, y = randomarr[remain_nums].y;
-			if (uselessJudge(x, y))
+			if (!uselessJudge(x, y))
 			{
 				MCTSboard[x][y] = useless_blance;
 				useless_blance = -useless_blance;
@@ -379,7 +390,7 @@ void distribute(node* n) {//相当于一次性拓展.
 	for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
 		for (int j = 0; j <= boardedge; j++) {
 			if (MCTSboard[i][j] == 0) {
-				if (uselessJudge(i, j)) {
+				if (!uselessJudge(i, j)) {
 					n->kids_array[n->useless_end].x = i;
 					n->kids_array[n->useless_end].y = j;
 					n->kids_array[n->useless_end].parent = n;
@@ -396,7 +407,7 @@ void distribute(node* n) {//相当于一次性拓展.
 		}
 	tmp++;
 #ifdef DEBUG
-	if (tmp != n->kids_array) printf("\n孩子安排错乱,n->useless_end=%d,tmp->y==%hd,n->kids_array[n->useless_end].y=%hd", n->useless_end, tmp->y, n->kids_array[n->useless_end].y);
+	if (tmp != n->kids_array + n->useless_end) printf("\n孩子安排错乱,n->useless_end=%d,tmp->y==%hd,n->kids_array[n->useless_end].y=%hd", n->useless_end, tmp->y, n->kids_array[n->useless_end].y);
 #endif // DEBUG
 	n->SIMidx = n->useless_end;
 #ifdef DEBUG
@@ -412,7 +423,390 @@ void backup(int leaf_win_times, node* leaf) {//模拟点的数据一同更改
 		win_times = rollout_times - win_times;//每一层翻转获胜 与失败次数 
 	}
 }
-bool uselessJudge(int x, int y) { return false; }
+bool uselessJudge(int x, int y) {
+	int my_color_num = 0;
+	int enemy_color_num = 0;
+	int empty = 0;
+	int invalid = 0;
+
+	for (int i = 0; i < 6; i++) {
+		x = x + dx[i]; y = y + dy[i];
+		if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
+			switch (MCTSboard[x][y]) {
+			case 1:
+				my_color_num++;
+				break;
+			case -1:
+				enemy_color_num++;
+				break;
+			case 0:
+				empty++;
+				break;
+			default:
+				break;
+			}
+		}
+		else {
+			invalid++;
+		}
+		x = x - dx[i]; y = y - dy[i];
+	}
+	if (invalid == 4) {
+		if (x == 0) {
+			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y + 1) == 'R')return false;
+			return true;
+		}
+		else {
+			if (my_color_num == 1 && enemy_color_num == 1 && getcolor(x, y - 1) == 'R')return false;
+			return false;
+		}
+	}
+	else if (invalid == 3) {
+		if (x == 0) {
+			if (enemy_color_num == 1 && my_color_num == 1 && getcolor(x, y - 1) == 'R' && getcolor(x + 1, y) == 'B')return false;
+			if (enemy_color_num == 3 || my_color_num == 3)return false;
+			return true;
+
+		}
+		else {
+			if (enemy_color_num == 1 && my_color_num == 1 && getcolor(x, y + 1) == 'R' && getcolor(x - 1, y) == 'B')return false;
+			if (enemy_color_num == 3 || my_color_num == 3)return false;
+			return true;
+		}
+	}
+	else if (invalid == 2) {
+		int flag_my = 0;
+		int flag_enemy = 0;
+		if (empty == 4 || 3 || 2) {
+			return true;
+		}else if(empty == 1){
+			if (my_color_num == 2) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (x >= 0 && x <= 10&& y>= 0&& y <= 10) {
+						if (MCTSboard[x][y] == 1) {
+							int p = i - 1;
+							int p2 = i + 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (p2 == 6) {
+								p2 = 0;
+							}
+							if (x - dx[i] + dx[p] >= 0&& x - dx[i] + dx[p] <= 10&&MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 &&MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
+						}
+						
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				return true;
+			}
+			if (enemy_color_num == 2) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
+						if (MCTSboard[x][y] == -1) {
+							int p = i - 1;
+							int p2 = i + 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (p2 == 6) {
+								p2 = 0;
+							}
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == -1)return false;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == -1)return false;
+						}
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				return true;
+			}
+		}
+		else if(empty == 0){
+			if (my_color_num == 4 || enemy_color_num == 4)return false;
+			if (my_color_num == 3) {
+				int flag_jud = 0;
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
+						if (MCTSboard[x][y] == -1) {
+							int p = i - 1;
+							int p2 = i + 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (p2 == 6) {
+								p2 = 0;
+							}
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)flag_jud++;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)flag_jud++;
+						}
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				if (flag_jud == 2)return false;
+				return true;
+			}
+			if (enemy_color_num == 3) {
+				int flag_jud = 0;
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
+						if (MCTSboard[x][y] == 1) {
+							int p = i - 1;
+							int p2 = i + 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (p2 == 6) {
+								p2 = 0;
+							}
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == -1)flag_jud++;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == -1)flag_jud++;
+						}
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				if (flag_jud == 2)return false;
+				return true;
+			}
+			if (my_color_num == 2) {
+				int flag_jud = 0;
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
+						if (MCTSboard[x][y] == 1) {
+							int p = i - 1;
+							int p2 = i + 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (p2 == 6) {
+								p2 = 0;
+							}
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1) {
+								flag_jud++;
+							}
+							else {
+								flag_jud++;
+							}
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1) {
+								flag_jud++;
+							}
+							else {
+								flag_jud++;
+							}
+						}
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				if (flag_jud == 2)return false;
+				return true;
+			}
+		}
+		
+	}
+	else if (invalid == 0) {
+		int x2 = x;
+		int y2 = y;
+		if (empty >= 3)return true;
+		if (empty <= 2) {
+			if (my_color_num > 4 || enemy_color_num > 4)return false;
+			if (my_color_num == 4 && enemy_color_num <= 2) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == -1 || MCTSboard[x][y] == 0) {
+						int p = i - 1;
+						int p2 = i + 1;
+						if (p == -1) {
+							p = 5;
+						}
+						if (p2 == 6) {
+							p2 = 0;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0 || MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == -1)return false;
+						if (MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 0 || MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == -1)return false;
+						return true;
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+			}
+			if (enemy_color_num == 4 && my_color_num <= 2) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == 0 || MCTSboard[x][y] == 1) {
+						int p = i - 1;
+						int p2 = i + 1;
+						if (p == -1) {
+							p = 5;
+						}
+						if (p2 == 6) {
+							p2 = 0;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0 || MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
+						if (MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 0 || MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
+						return true;
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+			}
+			if (my_color_num == 3 && enemy_color_num == 1) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == 0) {
+						int p = i - 1;
+						int p2 = i + 1;
+						if (p == -1) {
+							p = 5;
+						}
+						if (p2 == 6) {
+							p2 = 0;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == -1) {
+							p = p - 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0) {
+								return false;
+							}
+						}
+						if (MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == -1) {
+							p2 = p2 + 1;
+							if (p2 == 6) {
+								p = 0;
+							}
+							if (MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 0) {
+								return false;
+							}
+						}
+						return true;
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+			}
+			if (enemy_color_num == 3 && my_color_num == 1) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == 0) {
+						int p = i - 1;
+						int p2 = i + 1;
+						if (p == -1) {
+							p = 5;
+						}
+						if (p2 == 6) {
+							p2 = 0;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1) {
+							p = p - 1;
+							if (p == -1) {
+								p = 5;
+							}
+							if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0) {
+								return false;
+							}
+						}
+						if (MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1) {
+							p2 = p2 + 1;
+							if (p2 == 6) {
+								p = 0;
+							}
+							if (MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 0) {
+								return false;
+							}
+						}
+						return true;
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+			}
+			if (my_color_num == 3 && enemy_color_num == 3) {
+				int flag_my = 0;
+				int flag_enemy = 0;
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == 1) {
+						flag_my++;
+						flag_enemy = 0;
+					}
+					else {
+						flag_enemy++;
+						flag_my = 0;
+					}
+					if (flag_my == 3 || flag_enemy == 3)return false;
+					x = x - dx[i]; y = y - dy[i];
+				}
+				return true;
+			}
+			if (my_color_num == 2 && enemy_color_num == 2) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == 0) {
+						int p = i - 3;
+						if (p < 0) {
+							p = 6 + p;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 0)return false;
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				return true;
+			}
+			if (my_color_num == 3 && enemy_color_num == 2) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == 1) {
+						int p = i - 1;
+						int p2 = i + 1;
+						if (p == -1) {
+							p = 5;
+						}
+						if (p2 == 6) {
+							p2 = 0;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1) {
+							p = p - 2;
+							if (p < 0) {
+								p = 6 + p;
+							}
+							if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == -1)return false;
+						}
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				return true;
+			}
+			if (my_color_num == 2 && enemy_color_num == 3) {
+				for (int i = 0; i < 6; i++) {
+					x = x + dx[i]; y = y + dy[i];
+					if (MCTSboard[x][y] == -1) {
+						int p = i - 1;
+						int p2 = i + 1;
+						if (p == -1) {
+							p = 5;
+						}
+						if (p2 == 6) {
+							p2 = 0;
+						}
+						if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == -1 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == -1) {
+							p = p - 2;
+							if (p < 0) {
+								p = 6 + p;
+							}
+							if (MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
+						}
+					}
+					x = x - dx[i]; y = y - dy[i];
+				}
+				return true;
+			}
+		}
+
+	}
+	return true;
+}
 bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) {
 	if (x - 1 >= 0 && y + 1 < SIZE && MCTSboard[x - 1][y] == MCTSboard[x][y + 1])
 	{
@@ -472,7 +866,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 	}
 	if (y == 0)
 	{
-		if (x - 1 >= 0 && MCTSboard[x - 1][y + 1] == 1 && MCTSboard[x - 1][y] == 0)
+		if (x - 1 >= 0 && MCTSboard[x - 1][y + 1] == 1 && MCTSboard[x - 1][y] == 0 && getcolor(x - 1, y + 1) == 'B')
 		{
 
 			new_x = x - 1;
@@ -480,7 +874,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 			return true;
 
 		}
-		if (x + 1 < SIZE && MCTSboard[x][y + 1] == 1 && MCTSboard[x + 1][y] == 0)
+		if (x + 1 < SIZE && MCTSboard[x][y + 1] == 1 && MCTSboard[x + 1][y] == 0 && getcolor(x - 1, y + 1) == 'B')
 		{
 
 			new_x = x + 1;
@@ -492,7 +886,8 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 	}
 	if (x == 0)
 	{
-		if (y - 1 >= 0 && MCTSboard[x + 1][y - 1] == 1 && MCTSboard[x][y - 1] == 0)
+
+		if (y - 1 >= 0 && MCTSboard[x + 1][y - 1] == 1 && MCTSboard[x][y - 1] == 0 && getcolor(x + 1, y - 1) == 'R')
 		{
 
 			new_x = x;
@@ -500,7 +895,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 			return true;
 
 		}
-		if (y + 1 < SIZE && MCTSboard[x + 1][y] == 1 && MCTSboard[x][y + 1] == 0)
+		if (y + 1 < SIZE && MCTSboard[x + 1][y] == 1 && MCTSboard[x][y + 1] == 0 && getcolor(x + 1, y - 1) == 'R')
 		{
 
 			new_x = x;
@@ -512,7 +907,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 	}
 	if (y == 10)
 	{
-		if (x + 1 < SIZE && MCTSboard[x + 1][y - 1] == 1 && MCTSboard[x + 1][y] == 0)
+		if (x + 1 < SIZE && MCTSboard[x + 1][y - 1] == 1 && MCTSboard[x + 1][y] == 0 && getcolor(x + 1, y - 1) == 'B')
 		{
 
 			new_x = x + 1;
@@ -520,7 +915,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 			return true;
 
 		}
-		if (x - 1 >= 0 && MCTSboard[x][y - 1] == 1 && MCTSboard[x - 1][y] == 0)
+		if (x - 1 >= 0 && MCTSboard[x][y - 1] == 1 && MCTSboard[x - 1][y] == 0 && getcolor(x + 1, y - 1) == 'B')
 		{
 
 			new_x = x - 1;
@@ -532,7 +927,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 	}
 	if (x == 10)
 	{
-		if (y + 1 < SIZE && MCTSboard[x - 1][y + 1] == 1 && MCTSboard[x][y + 1] == 0)
+		if (y + 1 < SIZE && MCTSboard[x - 1][y + 1] == 1 && MCTSboard[x][y + 1] == 0 && getcolor(x + 1, y - 1) == 'R')
 		{
 
 			new_x = x;
@@ -540,7 +935,7 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 			return true;
 
 		}
-		if (y - 1 >= 0 && MCTSboard[x - 1][y] == 1 && MCTSboard[x][y - 1] == 0)
+		if (y - 1 >= 0 && MCTSboard[x - 1][y] == 1 && MCTSboard[x][y - 1] == 0 && getcolor(x + 1, y - 1) == 'R')
 		{
 
 			new_x = x;
@@ -550,4 +945,11 @@ bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y) 
 		}
 	}
 	return false;
+}
+char getcolor(int x, int y) {
+	if (MCTSboard[x][y] == 1 && mycolor == 'R' || MCTSboard[x][y] == -1 && mycolor == 'B')return 'R';
+	else if (MCTSboard[x][y] == 1 && mycolor == 'B' || MCTSboard[x][y] == -1 && mycolor == 'R')return 'B';
+	else if (MCTSboard[x][y] == 0) return 'N';//纯空白格
+	else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
+	else return 'W';//意料之外的情况
 }
