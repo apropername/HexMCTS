@@ -234,9 +234,8 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			useless_blance = -useless_blance;
 			maintain_kidsarr(now->kids_array[k].x, now->kids_array[k].y);
 		}
-		kidnum_of_now -= now->useless_end;
 		MCTSoccupy += now->useless_end;
-		if (now->SIMidx == kidnum_of_now+ now->useless_end) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
+		if (now->SIMidx == kidnum_of_now ){//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
 			kidnum_of_now--;
@@ -252,7 +251,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			else;//肯定没人赢不用检查了
 			current_time = clock();
 			}
-		else if (now->SIMidx < kidnum_of_now + now->useless_end) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
+		else if (now->SIMidx < kidnum_of_now ) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
 			(now->SIMidx)++;
 			now = &(now->kids_array[now->SIMidx - 1]);
 			myturn = !myturn;
@@ -267,7 +266,7 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
 		}
 		
-		else { cout << "\nnow->SIMidx > kidnum_of_now+ now->useless_end)"; break; }
+		else { cout << "\nnow->SIMidx > kidnum_of_now)"; break; }
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
 }
