@@ -48,6 +48,7 @@ int simulate(node* n);
 void distribute(node* n);
 void backup(int leaf_win_times, node* leaf);
 bool recoverBridge(int MCTSboard[][SIZE], int x, int y, int& new_x, int& new_y);
+void choosekids(int expandpointx[], int expandpointy[]);
 bool uselessJudge(int x, int y); int useless_blance = 1;//2?
 char getcolor(int x, int y);
 
@@ -91,7 +92,7 @@ int main()
 	if (input[4 * n - 4] == -1) {//最后一个坐标是-1 -1 	游戏刚开始qie我方为先手即红方
 		new_x = 1; new_y = 2;
 	}
-	
+
 	else {
 		if (MCTSboard[7][3] == 0) {
 			new_x = 7; new_y = 3;
@@ -115,7 +116,7 @@ int main()
 			else {
 				UCT(new_x, new_y);
 			}
-	}
+		}
 	}
 
 	delete[] input;
@@ -132,15 +133,18 @@ bool onceprint = false;
 #endif // DEBUG
 
 int rollout_times = 20;//可以设置随层渐增，即增加多回合模拟的权重， 而且 在节点数较多时平衡总时间 。
+int expand_count = 0;
+int xofkid[121] = { 0 }, yofkid[121] = { 0 };
 struct coordinate
 {
 	int x; int y;
 	coordinate() :x(-1), y(-1) {}
 	coordinate(int i, int j) :x(i), y(j) {}
 };
-vector<coordinate> only_for_root;
 void UCT(int& finalx, int& finaly) {
 	node* virtualroot = new node; virtualroot->x = virtualroot->y = -1; virtualroot->parent = NULL;//因为节点 只记录模拟的落子位置 ，所以root x,y无意义。
+	choosekids(xofkid, yofkid);
+	int expand_count_copy= expand_count;
 	distribute(virtualroot);
 #ifdef DEBUG
 	int maxd = 1;
@@ -187,6 +191,7 @@ void UCT(int& finalx, int& finaly) {
 			MCTSboard[x][y] = -1;
 			MCTSoccupy++;
 		}
+		expand_count = expand_count_copy;
 		current_time = clock();//保险起见且位于最外层循环相对代价小
 		if (current_time - start_time > threshold) break;
 	}
@@ -205,32 +210,33 @@ void UCT(int& finalx, int& finaly) {
 #endif // 
 	finalx = result->x; finaly = result->y;
 }
+
+void maintain_kidsarr(int x,int y){
+	for(int i=0;i< expand_count;i++)
+		if (xofkid[i] == x) 
+			if (yofkid[i] == y) {
+				expand_count--;
+				xofkid[i] = xofkid[expand_count];
+				yofkid[i] = yofkid[expand_count];
+				xofkid[expand_count] = x;
+				yofkid[expand_count] = y;
+			}		
+}
 node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,同时在棋盘上落子也就是在假装结点存的是棋盘
 	node* now = root;
 	bool myturn = false;//root的
-	int kidnum_of_now = 121 - MCTSoccupy;
+	//int kidnum_of_now = 121 - MCTSoccupy;
+	int kidnum_of_now = expand_count;
 	do {//根节点肯定没分出胜负，那就省一次判断
 		for (int k = now->useless_end - 1; k >= 0; k--)//额外填补无用位置,不会改变填补前局面的未决胜负。 
 		{
 			MCTSboard[now->kids_array[k].x][now->kids_array[k].y] = useless_blance;
 			useless_blance = -useless_blance;
+			maintain_kidsarr(now->kids_array[k].x, now->kids_array[k].y);
 		}
 		kidnum_of_now -= now->useless_end;
 		MCTSoccupy += now->useless_end;
-		if (now->SIMidx < kidnum_of_now) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
-			(now->SIMidx)++;
-			now = &(now->kids_array[now->SIMidx - 1]);
-			myturn = !myturn;
-			//kidnum_of_now--;此处无用
-			if (myturn)
-				MCTSboard[now->x][now->y] = 1;
-			else
-				MCTSboard[now->x][now->y] = -1;
-			MCTSoccupy++;
-			//返回一个未模拟节点。存在这种情况：如果返回后时限已到便无法模拟则索引值确实是错的，但是程序要结束了这个索引值接下来也没有用了（注意只有索引值错了返回的节点是没错的 ）		
-			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
-		}
-		else if (now->SIMidx == kidnum_of_now) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
+		if (now->SIMidx == kidnum_of_now) {//在一个节点的所有子节点都模拟过，即该结点已完全拓展了时，向下一层迭代 
 			now = ucbchoice(now, 2.0);
 			myturn = !myturn;
 			kidnum_of_now--;
@@ -239,12 +245,28 @@ node* traverse(node* root) {//从根节点开始遍历找出一个叶子节点,�
 			else
 				MCTSboard[now->x][now->y] = -1;
 			MCTSoccupy++;
+			maintain_kidsarr(now->x, now->y);
 			if (now->SIMidx == -1) {//now局面一定有胜利
 				break;
 			}
 			else;//肯定没人赢不用检查了
 			current_time = clock();
+			}
+		else if (now->SIMidx < kidnum_of_now) {//不是一个个拓展子节点 ,而是提前设置好所有子节点，只是子节点一开始模拟次数都是零,仍然需要一个个模拟 ，SIMidx索引准备模拟的子节点
+			(now->SIMidx)++;
+			now = &(now->kids_array[now->SIMidx - 1]);
+			myturn = !myturn;
+			//kidnum_of_now--;此处无用
+			if (myturn)
+				MCTSboard[now->x][now->y] = 1;
+			else
+				MCTSboard[now->x][now->y] = -1;
+			maintain_kidsarr(now->x, now->y);
+			MCTSoccupy++;
+			//返回一个未模拟节点。存在这种情况：如果返回后时限已到便无法模拟则索引值确实是错的，但是程序要结束了这个索引值接下来也没有用了（注意只有索引值错了返回的节点是没错的 ）		
+			return now;//其无用位置虽现在未填，但若随机模拟，随机模拟时会填
 		}
+		
 		else { cout << "\nnow->SIMidx > kidnum_of_now"; break; }
 	} while (current_time - start_time < threshold);//Q：如果树中的节点会特别多 ，也可以考虑终止条件设为棋盘满没满.
 	return now;//终止态结点。在if中break做的事不多，可以认为返回时刚检测了时间
@@ -382,29 +404,34 @@ int simulate(node* leaf) {
 #ifdef DEBUG
 int cnt = 0;
 #endif // DEBUG
-
 void distribute(node* n) {//相当于一次性拓展.
-	n->kids_array = new node[121 - MCTSoccupy];
-	node* tmp = (n->kids_array) + (121 - MCTSoccupy - 1);//节省运算时间 
-	//int idx = 121 - MCTSoccupy - 1;
-	for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
-		for (int j = 0; j <= boardedge; j++) {
-			if (MCTSboard[i][j] == 0) {
-				if (!uselessJudge(i, j)) {
-					n->kids_array[n->useless_end].x = i;
-					n->kids_array[n->useless_end].y = j;
-					n->kids_array[n->useless_end].parent = n;
-					n->useless_end++;
-					if (n->parent == NULL) only_for_root.push_back({ i,j });
-				}
-				else {
-					tmp->x = i;
-					tmp->y = j;
-					tmp->parent = n;
-					tmp--;
-				}
+	int kids_num = expand_count;
+	//n->kids_array = new node[121 - MCTSoccupy];
+	n->kids_array = new node[kids_num];
+	//node* tmp = (n->kids_array) + (121 - MCTSoccupy - 1);//节省运算时间 
+	node* tmp = (n->kids_array) + (kids_num - 1);//节省运算时间 
+	//for (int i = 0; i <= boardedge; i++)//不用怀疑，找空位对棋盘遍历就是最轻松高效的方法
+	//	for (int j = 0; j <= boardedge; j++) {
+	//			if (MCTSboard[i][j] == 0) {
+	//			}
+	//		}
+	//	}
+	while (kids_num > 0) {
+		int i = xofkid[kids_num - 1], j = yofkid[kids_num - 1];
+			if (!uselessJudge(i, j)) {
+				n->kids_array[n->useless_end].x = i;
+				n->kids_array[n->useless_end].y = j;
+				n->kids_array[n->useless_end].parent = n;
+				n->useless_end++;
 			}
-		}
+			else {
+				tmp->x = i;
+				tmp->y = j;
+				tmp->parent = n;
+				tmp--;
+			}
+		kids_num--;
+	}
 	tmp++;
 #ifdef DEBUG
 	if (tmp != n->kids_array + n->useless_end) printf("\n孩子安排错乱,n->useless_end=%d,tmp->y==%hd,n->kids_array[n->useless_end].y=%hd", n->useless_end, tmp->y, n->kids_array[n->useless_end].y);
@@ -479,11 +506,12 @@ bool uselessJudge(int x, int y) {
 		int flag_enemy = 0;
 		if (empty == 4 || 3 || 2) {
 			return true;
-		}else if(empty == 1){
+		}
+		else if (empty == 1) {
 			if (my_color_num == 2) {
 				for (int i = 0; i < 6; i++) {
 					x = x + dx[i]; y = y + dy[i];
-					if (x >= 0 && x <= 10&& y>= 0&& y <= 10) {
+					if (x >= 0 && x <= 10 && y >= 0 && y <= 10) {
 						if (MCTSboard[x][y] == 1) {
 							int p = i - 1;
 							int p2 = i + 1;
@@ -493,10 +521,10 @@ bool uselessJudge(int x, int y) {
 							if (p2 == 6) {
 								p2 = 0;
 							}
-							if (x - dx[i] + dx[p] >= 0&& x - dx[i] + dx[p] <= 10&&MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
-							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 &&MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
+							if (x - dx[i] + dx[p] >= 0 && x - dx[i] + dx[p] <= 10 && MCTSboard[x - dx[i] + dx[p]][y - dy[i] + dy[p]] == 1)return false;
+							if (x - dx[i] + dx[p2] >= 0 && x - dx[i] + dx[p2] <= 10 && MCTSboard[x - dx[i] + dx[p2]][y - dy[i] + dy[p2]] == 1)return false;
 						}
-						
+
 					}
 					x = x - dx[i]; y = y - dy[i];
 				}
@@ -524,7 +552,7 @@ bool uselessJudge(int x, int y) {
 				return true;
 			}
 		}
-		else if(empty == 0){
+		else if (empty == 0) {
 			if (my_color_num == 4 || enemy_color_num == 4)return false;
 			if (my_color_num == 3) {
 				int flag_jud = 0;
@@ -606,7 +634,7 @@ bool uselessJudge(int x, int y) {
 				return true;
 			}
 		}
-		
+
 	}
 	else if (invalid == 0) {
 		int x2 = x;
@@ -952,4 +980,47 @@ char getcolor(int x, int y) {
 	else if (MCTSboard[x][y] == 0) return 'N';//纯空白格
 	else if (MCTSboard[x][y] == 2) return 'O';//无用位置占用
 	else return 'W';//意料之外的情况
+}
+void choosekids(int expandpointx[], int expandpointy[]) {
+	int dist[11][11], qx[121], qy[121];  int max_expand = 2;
+	int ql = 0, qr = -1;
+	int begin_qr = qr;
+	for (int i = 0; i < SIZE; i++)
+	{
+		for (int j = 0; j < SIZE; j++)
+		{
+			dist[i][j] = -1;
+		}
+	}
+	for (int i = 0; i < SIZE; i++)
+	{
+		for (int j = 0; j < SIZE; j++)
+		{
+			if (MCTSboard[i][j] == 1|| MCTSboard[i][j]==-1)
+			{
+				dist[i][j] = 0;
+				qr++;
+				qx[qr] = i;
+				qy[qr] = j;
+			}
+		}
+	}
+	while (ql <= qr)
+	{
+		int x = qx[ql], y = qy[ql]; ql++;
+		if (dist[x][y] == max_expand) break;
+		for (int i = 0; i < 6; i++)
+		{
+			int tx = x + dx[i], ty = y + dy[i];
+			if (tx >= 0 && tx < SIZE && ty >= 0 && ty < SIZE && dist[tx][ty] == -1)
+			{
+				dist[tx][ty] = dist[x][y] + 1;
+				qr++, qx[qr] = tx, qy[qr] = ty;
+				expandpointx[expand_count] = tx;
+				expandpointy[expand_count] = ty;
+				expand_count++;
+			}
+		}
+	}
+	return;
 }
